@@ -7,7 +7,7 @@ import logging, math
 import stepper
 
 
-def distance_line_to_point(p1, p2, p, margin=0) -> tuple:
+def distance_line_to_point(p1, p2, p=(0,0), margin=0) -> tuple:
     """
     Calculates the distance between a point and a line segment defined by two points.
 
