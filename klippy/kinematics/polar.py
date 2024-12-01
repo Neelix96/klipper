@@ -163,13 +163,14 @@ class PolarKinematics:
             move.limit_speed(self.max_z_velocity * z_ratio,
                              self.max_z_accel * z_ratio)
         if move.axes_d[0] or move.axes_d[1]:
-            min_dist, angle, point_within_boundry, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
-            if min_dist <= self.critical_radius and point_within_boundry:
-                if  min_dist != 0:
+            min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
+            if min_dist <= self.critical_radius and point_within_boundary:
+                if min_dist != 0:
                     scale_radius = min_dist/self.critical_radius
-                    scale_angle = 1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0) # From Marlin
+                    scale_angle = 1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0)  # From Marlin
                     move.limit_speed(self.max_velocity * scale_angle * scale_radius,
                                      self.max_accel * scale_angle * scale_radius)
+                    logging.info("Radius: %s, Angle: %s, Vel: %s, Acc: %s", scale_radius, scale_angle, self.max_velocity, self.max_accel)
 
     def get_status(self, eventtime):
         xy_home = "xy" if self.limit_xy2 >= 0. else ""
