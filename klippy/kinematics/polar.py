@@ -168,9 +168,9 @@ class PolarKinematics:
                 if min_dist != 0:
                     scale_radius = min_dist/self.critical_radius
                     scale_angle = abs(1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0))  # From Marlin
-                    move.limit_speed(self.max_velocity * scale_angle * scale_radius,
+                    move.limit_speed(self.max_velocity ** (scale_angle * scale_radius),
                                      self.max_accel ** (scale_angle * scale_radius))
-                    logging.info("Radius: %s, Angle: %s, Vel: %s, Acc: %s", scale_radius, scale_angle, self.max_velocity, self.max_accel)
+                    logging.info("Vel: %s, Acc: %s", self.max_velocity ** (scale_angle * scale_radius), self.max_accel ** (scale_angle * scale_radius))
 
     def get_status(self, eventtime):
         xy_home = "xy" if self.limit_xy2 >= 0. else ""
