@@ -164,7 +164,7 @@ class PolarKinematics:
                              self.max_z_accel * z_ratio)
         if move.axes_d[0] or move.axes_d[1]:
             min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
-            if min_dist <= self.critical_radius and point_within_boundary:
+            if min_dist <= self.critical_radius:
                 if min_dist != 0:
                     scale_radius = min_dist/self.critical_radius
                     scale_angle = abs(1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0))  # From Marlin
