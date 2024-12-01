@@ -86,6 +86,8 @@ class PolarKinematics:
             'max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
         self.max_z_accel = config.getfloat(
             'max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
+        self.critical_radius = config.getfloat(
+            'critical_radius', afbove=0.)
         self.limit_z = (1.0, -1.0)
         self.limit_xy2 = -1.
         max_xy = self.rails[0].get_range()[1]
