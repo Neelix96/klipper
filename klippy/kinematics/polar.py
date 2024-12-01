@@ -6,6 +6,62 @@
 import logging, math
 import stepper
 
+
+def distance_line_to_point(p1, p2, p, margin=0) -> tuple:
+    """
+    Calculates the distance between a point and a line segment defined by two points.
+
+    Args:
+        p (list): The coordinates of the point [x, y].
+        p1 (list): The coordinates of the first endpoint of the line segment [x1, y1].
+        p2 (list): The coordinates of the second endpoint of the line segment [x2, y2].
+
+    Returns:
+        float: The distance between the point and the line segment.
+    """
+    x, y = p
+    x1, y1 = p1
+    x2, y2 = p2
+
+    # Calculate the vectors AB and AP
+    ab_x = x2 - x1
+    ab_y = y2 - y1
+    ap_x = x - x1
+    ap_y = y - y1
+
+    # Calculate the dot product of AB and AP
+    ab_ap_dot_product = ab_x * ap_x + ab_y * ap_y
+
+    # Calculate the length of vector AB
+    ab_length = math.sqrt(ab_x ** 2 + ab_y ** 2)
+    point_within_boundry = False
+
+    # Check if the projected point lies on the bounded line segment
+    if ab_ap_dot_product <= -0.1:
+        # The projected point is outside the segment before the starting point
+        dist = math.sqrt(ap_x ** 2 + ap_y ** 2)
+        projected_point = (0, 0)
+    elif ab_ap_dot_product >= ab_length ** 2:
+        # The projected point is outside the segment after the end point
+        dist = math.sqrt((x - x2) ** 2 + (y - y2) ** 2)
+        projected_point = (0, 0)
+    else:
+        # The projected point is inside the bounded line segment
+        # Calculate the distance using the cross product
+        dist = abs(ab_x * ap_y - ab_y * ap_x) / ab_length
+        point_within_boundry = True
+
+        # Calculate the position along the segment as a percentage
+        position_along_segment = ab_ap_dot_product / (ab_length ** 2)
+        # Determine the coordinates of the projected point
+        projected_x = x1 + position_along_segment * ab_x
+        projected_y = y1 + position_along_segment * ab_y
+        projected_point = (projected_x, projected_y)
+
+    angle = math.degrees(math.atan2(ab_y, ab_x))
+
+    return dist, angle, point_within_boundry, projected_point
+
 class PolarKinematics:
     def __init__(self, toolhead, config):
         # Setup axis steppers
@@ -25,11 +81,11 @@ class PolarKinematics:
         config.get_printer().register_event_handler("stepper_enable:motor_off",
                                                     self._motor_off)
         # Setup boundary checks
-        max_velocity, max_accel = toolhead.get_max_velocity()
+        self.max_velocity, self.max_accel = toolhead.get_max_velocity()
         self.max_z_velocity = config.getfloat(
-            'max_z_velocity', max_velocity, above=0., maxval=max_velocity)
+            'max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
         self.max_z_accel = config.getfloat(
-            'max_z_accel', max_accel, above=0., maxval=max_accel)
+            'max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
         self.limit_z = (1.0, -1.0)
         self.limit_xy2 = -1.
         max_xy = self.rails[0].get_range()[1]
@@ -104,6 +160,15 @@ class PolarKinematics:
             z_ratio = move.move_d / abs(move.axes_d[2])
             move.limit_speed(self.max_z_velocity * z_ratio,
                              self.max_z_accel * z_ratio)
+        if move.axes_d[0] or move.axes_d[1]:
+            min_dist, angle, point_within_boundry, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
+            if min_dist <= self.critical_radius and point_within_boundry:
+                if  min_dist != 0:
+                    scale_radius = min_dist/self.critical_radius
+                    scale_angle = 1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0) # From Marlin
+                    move.limit_speed(self.max_velocity * scale_angle * scale_radius,
+                                     self.max_accel * scale_angle * scale_radius)
+
     def get_status(self, eventtime):
         xy_home = "xy" if self.limit_xy2 >= 0. else ""
         z_home = "z" if self.limit_z[0] <= self.limit_z[1] else ""
