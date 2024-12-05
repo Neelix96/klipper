@@ -171,7 +171,7 @@ class PolarKinematics:
                     _speed = self.max_velocity * (scale_radius)
                     _accel = self.max_accel * (scale_radius)
                     move.limit_speed(_speed,_accel)
-                    logging.info("Vel: %s, Acc: %s", _speed, _accel)
+                    # logging.info("Vel: %s, Acc: %s", _speed, _accel)
 
     def get_status(self, eventtime):
         xy_home = "xy" if self.limit_xy2 >= 0. else ""
