@@ -308,14 +308,15 @@ class AvoidCenter:
         end_pos = newpos
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
-        if min_dist >= 0.2:  # Outside radius
+        if min_dist >= self.min_radius:  # Outside radius
             logging.info("AVOID OBJECT MOVE: OK")
             self._normal_move(newpos, speed)
         else:  # Move hits circle
             logging.info("AVOID OBJECT MOVE: In CIRCLE")
             if contact_state == 0:  # STARTS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
-                                                       (0,0), self.min_radius)
+                                                       (0,0), self.min_radius+0.01)
+                logging.info("STARTS, Point: %s" col_point_1)
                 if col_point_1:
                     self._move_on_circle(start_pos, col_point_1)
                     self._normal_move(end_pos, speed)
@@ -323,7 +324,8 @@ class AvoidCenter:
                     self._normal_move(end_pos, speed)
             elif contact_state == 1:  # ENDS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
-                                                       (0, 0), self.min_radius)
+                                                       (0, 0), self.min_radius+0.01)
+                logging.info("ENDS, Point: %s", col_point_1)
                 if col_point_1:
                     adj_pos = newpos
                     adj_pos[0] = col_point_1[0]
@@ -333,7 +335,8 @@ class AvoidCenter:
                     self._normal_move(end_pos, speed)
             elif contact_state == 2:  # THROUGH
                 col_point_1, col_point_2 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
-                                                       (0, 0), self.min_radius, True)
+                                                       (0, 0), self.min_radius+0.01, True)
+                logging.info("THROUGH, Point1: %s, Point2: %s", col_point_1, col_point_2)
                 adj_pos = newpos
                 adj_pos[0] = col_point_1[0]
                 adj_pos[1] = col_point_1[1]
