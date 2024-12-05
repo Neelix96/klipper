@@ -282,7 +282,7 @@ class AvoidCenter:
         self._normal_move(newpos, speed)
         #TODO: Add extrusion compensation similiar to _ignore_move
 
-    def _move_from_excluded_region(self, newpos, speed):
+    def _move_from_circle(self, newpos, speed):
         #TODO: Add extrusion compensation similiar to ExludeObject
         self._normal_move(newpos, speed)
 
@@ -346,7 +346,7 @@ class AvoidCenter:
                 self._move_into_circle(adj_pos, speed)
 
                 self._move_on_circle(col_point_1, (col_point_2[0], col_point_2[1], adj_pos[2], adj_pos[3]))
-                self._move_from_excluded_region(col_point_2, end_pos)
+                self._move_from_circle((col_point_2[0], col_point_2[1], adj_pos[2], adj_pos[3]), end_pos)
 
     cmd_AVOID_CENTER_help = "Avoids a radius around the center"
 
