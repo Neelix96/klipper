@@ -166,6 +166,9 @@ class AvoidCenter:
         self.radius_speed = 1   # mm/s
         self.circle_steps = 20  # in °
 
+        self.gcode.register_command('AVOID_CENTER', self.cmd_AVOID_CENTER,
+                                    desc=self.cmd_AVOID_CENTER_help)
+
     def _register_transform(self):
         if self.next_transform is None:
             tuning_tower = self.printer.lookup_object('tuning_tower')
@@ -330,6 +333,8 @@ class AvoidCenter:
 
                 self._move_on_circle(col_point_1, col_point_2)
                 self._move_from_excluded_region(col_point_2, end_pos)
+
+    cmd_AVOID_CENTER_help = "Avoids a radius around the center"
 
     def cmd_AVOID_CENTER(self, gcmd):
         self._register_transform()
