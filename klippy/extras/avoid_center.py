@@ -162,19 +162,17 @@ class AvoidCenter:
         self.last_position_extruded = [0., 0., 0., 0.]
         self.last_position_excluded = [0., 0., 0., 0.]
 
-        self.min_radius = 0.1  # mm
-        self.radius_speed = 1  # mm/s
-        self.circle_steps = 20 # in °
-
-        self._register_transform()
+        self.min_radius = 0.1   # mm
+        self.radius_speed = 1   # mm/s
+        self.circle_steps = 20  # in °
 
     def _register_transform(self):
         if self.next_transform is None:
-            #tuning_tower = self.printer.lookup_object('tuning_tower')
-            #if tuning_tower.is_active():
-            #    logging.info('The ExcludeObject move transform is not being '
-            #        'loaded due to Tuning tower being Active')
-            #    return
+            tuning_tower = self.printer.lookup_object('tuning_tower')
+            if tuning_tower.is_active():
+                logging.info('The Avoid Center move transform is not being '
+                    'loaded due to Tuning tower being Active')
+                return
 
             self.next_transform = self.gcode_move.set_move_transform(self, force=True)
             self.extrusion_offsets = {}
@@ -332,6 +330,10 @@ class AvoidCenter:
 
                 self._move_on_circle(col_point_1, col_point_2)
                 self._move_from_excluded_region(col_point_2, end_pos)
+
+    def cmd_AVOID_CENTER(self, gcmd):
+        self._register_transform()
+        gcmd.respond_info("Center avoidance successfully loaded")
 
 
 def load_config(config):
