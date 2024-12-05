@@ -324,10 +324,13 @@ class AvoidCenter:
             elif contact_state == 1:  # ENDS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0, 0), self.min_radius)
-                adj_pos = newpos
-                adj_pos[0] = col_point_1[0]
-                adj_pos[1] = col_point_1[1]
-                self._move_into_circle(adj_pos, speed)
+                if col_point_1:
+                    adj_pos = newpos
+                    adj_pos[0] = col_point_1[0]
+                    adj_pos[1] = col_point_1[1]
+                    self._move_into_circle(adj_pos, speed)
+                else:
+                    self._normal_move(end_pos, speed)
             elif contact_state == 2:  # THROUGH
                 col_point_1, col_point_2 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0, 0), self.min_radius, True)
