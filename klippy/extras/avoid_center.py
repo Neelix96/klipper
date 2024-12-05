@@ -316,7 +316,7 @@ class AvoidCenter:
             if contact_state == 0:  # STARTS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0,0), self.min_radius+0.01)
-                logging.info("STARTS, Point: %s" col_point_1)
+                logging.info("STARTS, Point: %s", col_point_1)
                 if col_point_1:
                     self._move_on_circle(start_pos, col_point_1)
                     self._normal_move(end_pos, speed)
