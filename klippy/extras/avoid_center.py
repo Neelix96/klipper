@@ -303,7 +303,7 @@ class AvoidCenter:
                                   self.radius_speed)
         except IndexError:
             logging.info("ARC Points generated: %s", _points)
-        self._normal_move(_end, self.radius_speed)
+        # self._normal_move(_end, self.radius_speed)
 
     def move(self, newpos, speed):
         # check min distance to circle
@@ -321,7 +321,7 @@ class AvoidCenter:
                                                        (0,0), self.min_radius+0.01)
                 logging.info("STARTS, Point: %s", col_point_1)
                 if col_point_1:
-                    self._move_on_circle(start_pos, col_point_1)
+                    self._move_on_circle(start_pos, (col_point_1[0], col_point_1[1], start_pos[2], start_pos[3]))
                     self._normal_move(end_pos, speed)
                 else:
                     self._normal_move(end_pos, speed)
@@ -345,7 +345,7 @@ class AvoidCenter:
                 adj_pos[1] = col_point_1[1]
                 self._move_into_circle(adj_pos, speed)
 
-                self._move_on_circle(col_point_1, col_point_2)
+                self._move_on_circle(col_point_1, (col_point_2[0], col_point_2[1], adj_pos[2], adj_pos[3]))
                 self._move_from_excluded_region(col_point_2, end_pos)
 
     cmd_AVOID_CENTER_help = "Avoids a radius around the center"
