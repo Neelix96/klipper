@@ -303,14 +303,17 @@ class AvoidCenter:
         self._normal_move(_end, self.radius_speed)
 
     def move(self, newpos, speed):
+        logging.info("AVOID OBJECT MOVE")
         # check min distance to circle
         start_pos = self.get_position()
         end_pos = newpos
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
         if min_dist >= 0.2:  # Outside radius
+            logging.info("AVOID OBJECT MOVE: OK")
             self._normal_move(newpos, speed)
         else:  # Move hits circle
+            logging.info("AVOID OBJECT MOVE: In CIRCLE")
             if contact_state == 0:  # STARTS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0,0), self.min_radius)
