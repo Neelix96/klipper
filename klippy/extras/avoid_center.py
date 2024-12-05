@@ -284,7 +284,10 @@ class AvoidCenter:
 
     def _move_from_excluded_region(self, newpos, speed):
         #TODO: Add extrusion compensation similiar to ExludeObject
-        self._normal_move(newpos, speed)
+        try:
+            self._normal_move(newpos, speed)
+        except TypeError:
+            logging.error("Pos: %s, Speed: %s", newpos, speed)
 
         # This adjustment value is used to compensate for any retraction
         # differences between the last object printed and excluded one.
