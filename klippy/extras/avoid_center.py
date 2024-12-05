@@ -297,10 +297,12 @@ class AvoidCenter:
         #TODO add extruder offset compensation
         _points = generate_arc_points(self.min_radius, _start[0:2],
                                       _end[0:2], self.circle_steps)
-        logging.info("ARC Points generated: %s", _points)
-        for point in _points:
-            self._normal_move((point[0], point[1], _end[2], _end[3]),
-                              self.radius_speed)
+        try:
+            for point in _points:
+                self._normal_move((point[0], point[1], _end[2], _end[3]),
+                                  self.radius_speed)
+        except IndexError:
+            logging.info("ARC Points generated: %s", _points)
         self._normal_move(_end, self.radius_speed)
 
     def move(self, newpos, speed):
