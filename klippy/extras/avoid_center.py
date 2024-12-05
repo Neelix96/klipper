@@ -170,11 +170,11 @@ class AvoidCenter:
 
     def _register_transform(self):
         if self.next_transform is None:
-            tuning_tower = self.printer.lookup_object('tuning_tower')
-            if tuning_tower.is_active():
-                logging.info('The ExcludeObject move transform is not being '
-                    'loaded due to Tuning tower being Active')
-                return
+            #tuning_tower = self.printer.lookup_object('tuning_tower')
+            #if tuning_tower.is_active():
+            #    logging.info('The ExcludeObject move transform is not being '
+            #        'loaded due to Tuning tower being Active')
+            #    return
 
             self.next_transform = self.gcode_move.set_move_transform(self, force=True)
             self.extrusion_offsets = {}
