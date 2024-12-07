@@ -199,9 +199,15 @@ class AvoidCenter:
         self.last_position_extruded = [0., 0., 0., 0.]
         self.last_position_excluded = [0., 0., 0., 0.]
 
-        self.min_radius = 0.1   # mm
-        self.radius_speed = 1   # mm/s
-        self.circle_steps = 20  # in °
+        # load cfg
+        self.min_radius = config.getfloat(
+            "min_radius", default=0.1, above=0.)  # in mm
+        self.radius_speed = config.getfloat(
+            "min_radius_speed", default=1, above=0.)  # mm/s
+        self.circle_steps = config.getfloat(
+            "min_radius_steps", default=20, above=1)  # in °
+        self.max_move_length = config.getfloat(
+            "max_move_length", default=10, above=0.1)  # in mm  # in mm
 
         self.gcode.register_command('AVOID_CENTER', self.cmd_AVOID_CENTER,
                                     desc=self.cmd_AVOID_CENTER_help)
@@ -343,7 +349,7 @@ class AvoidCenter:
         # self._normal_move(_end, self.radius_speed)
 
     def move(self, newpos, speed):
-        split_points = interpolate_points(self.get_position(), newpos)
+        split_points = interpolate_points(self.get_position(), newpos, self.max_move_length)
         for i in range(0, len(split_points)-1):
             self._move(split_points[i], split_points[i+1], speed)
 
