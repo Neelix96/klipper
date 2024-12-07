@@ -128,7 +128,7 @@ def interpolate_points(start, end, step=10):
     # Calculate total distance in x-y space
     total_distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
 
-    if total_distance > 0.001:
+    try:
         # Calculate number of steps
         num_steps = int(total_distance // step)
 
@@ -143,7 +143,7 @@ def interpolate_points(start, end, step=10):
             z = z1 + t * (z2 - z1)
             w = w1 + t * (w2 - w1)
             points.append((x, y, z, w))
-    else:  # Z Move
+    except ZeroDivisionError:  #  happens with z move
         points = [(x1, x2, z2-z1, w2-w1)]
 
     return points
@@ -393,6 +393,7 @@ class AvoidCenter:
                 adj_pos[1] = col_point_1[1]
                 self._move_into_circle(adj_pos, speed)
 
+                # self._move_on_circle(col_point_1, (col_point_2[0], col_point_2[1], adj_pos[2], adj_pos[3]))
                 self._move_on_circle(col_point_1, (col_point_2[0], col_point_2[1], adj_pos[2], adj_pos[3]))
                 self._move_from_excluded_region(end_pos, speed)
 
