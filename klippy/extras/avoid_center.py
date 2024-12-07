@@ -369,7 +369,7 @@ class AvoidCenter:
                                                        (0, 0), self.min_radius+0.01)
                 logging.info("ENDS, Point: %s", col_point_1)
                 if col_point_1:
-                    adj_pos = end_pos
+                    adj_pos = list([end_pos])
                     adj_pos[0] = col_point_1[0]
                     adj_pos[1] = col_point_1[1]
                     self._move_into_circle(adj_pos, speed)
@@ -379,7 +379,7 @@ class AvoidCenter:
                 col_point_1, col_point_2 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0, 0), self.min_radius+0.01, True)
                 logging.info("THROUGH, Point1: %s, Point2: %s", col_point_1, col_point_2)
-                adj_pos = end_pos
+                adj_pos = list(end_pos)
                 adj_pos[0] = col_point_1[0]
                 adj_pos[1] = col_point_1[1]
                 self._move_into_circle(adj_pos, speed)
