@@ -360,10 +360,10 @@ class AvoidCenter:
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
         if min_dist >= self.min_radius:  # Outside radius
-            logging.info("AVOID OBJECT MOVE: OK")
+            logging.info("AVOID OBJECT: Standard move: %s", end_pos)
             self._normal_move(end_pos, speed)
         else:  # Move hits circle
-            logging.info("AVOID OBJECT MOVE: In CIRCLE")
+            logging.info("AVOID OBJECT MOVE: In CIRCLE: %s", end_pos)
             if contact_state == 0:  # STARTS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0,0), self.min_radius+0.01)
