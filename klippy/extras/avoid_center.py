@@ -135,7 +135,10 @@ def interpolate_points(start, end, step=10):
         # Generate points
         points = []
         for i in range(num_steps + 1):
-            t = i / num_steps  # Interpolation factor (0 to 1)
+            try:
+                t = i / num_steps  # Interpolation factor (0 to 1)
+            except ZeroDivisionError:
+                logging.info("Step No: %s, Total Dist: %s, Step: %s", num_steps, total_distance, step)
             # Interpolate x, y
             x = x1 + t * (x2 - x1)
             y = y1 + t * (y2 - y1)
