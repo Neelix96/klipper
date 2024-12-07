@@ -108,6 +108,43 @@ def intersection_vector_circle(p1: tuple, p2: tuple, center: tuple, radius: floa
         return [x1, y1], [x2, y2]
     return [x, y]
 
+def interpolate_points(start, end, step=10):
+    """
+    Interpolates points between a start and end position with steps of `step` length
+    in x-y distance and proportionally interpolates z and w values.
+
+    Parameters:
+        start (list): Starting point [x, y, z, w].
+        end (list): Ending point [x, y, z, w].
+        step (float): Step length in x-y distance.
+
+    Returns:
+        tuple: List of interpolated points (tuples).
+    """
+    # Unpack start and end points
+    x1, y1, z1, w1 = start
+    x2, y2, z2, w2 = end
+
+    # Calculate total distance in x-y space
+    total_distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+
+    # Calculate number of steps
+    num_steps = int(total_distance // step)
+
+    # Generate points
+    points = []
+    for i in range(num_steps + 1):
+        t = i / num_steps  # Interpolation factor (0 to 1)
+        # Interpolate x, y
+        x = x1 + t * (x2 - x1)
+        y = y1 + t * (y2 - y1)
+        # Interpolate z, w
+        z = z1 + t * (z2 - z1)
+        w = w1 + t * (w2 - w1)
+        points.append((x, y, z, w))
+
+    return points
+
 
 def generate_arc_points(radius, point1, point2, angle_step_deg):
     # Compute angles of the two points
@@ -306,14 +343,16 @@ class AvoidCenter:
         # self._normal_move(_end, self.radius_speed)
 
     def move(self, newpos, speed):
-        # check min distance to circle
-        start_pos = self.get_position()
-        end_pos = newpos
+        split_points = interpolate_points(self.get_position(), newpos)
+        for i in range(len(split_points)-1):
+            self._move(split_points[i], split_points[i+1], speed)
+
+    def _move(self, start_pos, end_pos, speed):
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
         if min_dist >= self.min_radius:  # Outside radius
             logging.info("AVOID OBJECT MOVE: OK")
-            self._normal_move(newpos, speed)
+            self._normal_move(end_pos, speed)
         else:  # Move hits circle
             logging.info("AVOID OBJECT MOVE: In CIRCLE")
             if contact_state == 0:  # STARTS
@@ -330,7 +369,7 @@ class AvoidCenter:
                                                        (0, 0), self.min_radius+0.01)
                 logging.info("ENDS, Point: %s", col_point_1)
                 if col_point_1:
-                    adj_pos = newpos
+                    adj_pos = end_pos
                     adj_pos[0] = col_point_1[0]
                     adj_pos[1] = col_point_1[1]
                     self._move_into_circle(adj_pos, speed)
@@ -340,7 +379,7 @@ class AvoidCenter:
                 col_point_1, col_point_2 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0, 0), self.min_radius+0.01, True)
                 logging.info("THROUGH, Point1: %s, Point2: %s", col_point_1, col_point_2)
-                adj_pos = newpos
+                adj_pos = end_pos
                 adj_pos[0] = col_point_1[0]
                 adj_pos[1] = col_point_1[1]
                 self._move_into_circle(adj_pos, speed)
