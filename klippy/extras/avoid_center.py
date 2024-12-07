@@ -128,20 +128,23 @@ def interpolate_points(start, end, step=10):
     # Calculate total distance in x-y space
     total_distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
 
-    # Calculate number of steps
-    num_steps = int(total_distance // step)
+    if total_distance > 0.001:
+        # Calculate number of steps
+        num_steps = int(total_distance // step)
 
-    # Generate points
-    points = []
-    for i in range(num_steps + 1):
-        t = i / num_steps  # Interpolation factor (0 to 1)
-        # Interpolate x, y
-        x = x1 + t * (x2 - x1)
-        y = y1 + t * (y2 - y1)
-        # Interpolate z, w
-        z = z1 + t * (z2 - z1)
-        w = w1 + t * (w2 - w1)
-        points.append((x, y, z, w))
+        # Generate points
+        points = []
+        for i in range(num_steps + 1):
+            t = i / num_steps  # Interpolation factor (0 to 1)
+            # Interpolate x, y
+            x = x1 + t * (x2 - x1)
+            y = y1 + t * (y2 - y1)
+            # Interpolate z, w
+            z = z1 + t * (z2 - z1)
+            w = w1 + t * (w2 - w1)
+            points.append((x, y, z, w))
+    else:  # Z Move
+        points = [(x1, x2, z2-z1, w2-w1)]
 
     return points
 
