@@ -369,7 +369,7 @@ class AvoidCenter:
                                                        (0, 0), self.min_radius+0.01)
                 logging.info("ENDS, Point: %s, Target: %s", col_point_1, list([end_pos]))
                 if col_point_1:
-                    adj_pos = list([end_pos])
+                    adj_pos = list(end_pos)
                     adj_pos[0] = col_point_1[0]
                     adj_pos[1] = col_point_1[1]
                     self._move_into_circle(adj_pos, speed)
