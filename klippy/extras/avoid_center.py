@@ -153,6 +153,8 @@ def interpolate_points(start, end, step=10):
 
 
 def generate_arc_points(radius, point1, point2, angle_step_deg):
+    import math
+
     # Compute angles of the two points
     theta1 = math.atan2(point1[1], point1[0])
     theta2 = math.atan2(point2[1], point2[0])
@@ -168,21 +170,20 @@ def generate_arc_points(radius, point1, point2, angle_step_deg):
     counterclockwise_diff = (theta2 - theta1) % (2 * math.pi)
 
     # Choose the smaller arc
+    angles = []
+    step = math.radians(angle_step_deg)
+
     if clockwise_diff < counterclockwise_diff:
         # Clockwise arc
-        step = -math.radians(angle_step_deg)
-        angles = []
         current_angle = theta1
-        while current_angle > theta2:
+        while (current_angle - theta2) % (2 * math.pi) > step:
             angles.append(current_angle)
-            current_angle += step
+            current_angle -= step
         angles.append(theta2)  # Ensure the last point is included
     else:
         # Counterclockwise arc
-        step = math.radians(angle_step_deg)
-        angles = []
         current_angle = theta1
-        while current_angle < theta2:
+        while (theta2 - current_angle) % (2 * math.pi) > step:
             angles.append(current_angle)
             current_angle += step
         angles.append(theta2)  # Ensure the last point is included
