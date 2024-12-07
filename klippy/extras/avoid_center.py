@@ -344,7 +344,7 @@ class AvoidCenter:
 
     def move(self, newpos, speed):
         split_points = interpolate_points(self.get_position(), newpos)
-        for i in range(len(split_points)-1):
+        for i in range(0, len(split_points)-1):
             self._move(split_points[i], split_points[i+1], speed)
 
     def _move(self, start_pos, end_pos, speed):
@@ -367,7 +367,7 @@ class AvoidCenter:
             elif contact_state == 1:  # ENDS
                 col_point_1 = intersection_vector_circle(tuple(start_pos[0:2]), end_pos[0:2],
                                                        (0, 0), self.min_radius+0.01)
-                logging.info("ENDS, Point: %s", col_point_1)
+                logging.info("ENDS, Point: %s, Target: %s", col_point_1, list([end_pos]))
                 if col_point_1:
                     adj_pos = list([end_pos])
                     adj_pos[0] = col_point_1[0]
