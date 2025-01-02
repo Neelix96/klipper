@@ -357,11 +357,17 @@ class AvoidCenter:
 
     def move(self, newpos, speed):
         split_points = interpolate_points(self.get_position(), newpos, self.max_move_length)
-        logging.info(split_points)
-        for i in range(0, len(split_points)-1):
-            self._move(split_points[i], split_points[i+1], speed)
+        logging.info("Split Points", split_points)
 
-    def _move(self, start_pos, end_pos, speed):
+        list_length = len(split_points)
+
+        if list_length <= 1:
+            self.move(newpos, speed)
+        else:
+            for i in range(1, list_length):
+                self._move(split_points[i], speed)
+
+    def _move(self, end_pos, speed):
         start_pos = self.get_position()
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
