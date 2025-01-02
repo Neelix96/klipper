@@ -362,7 +362,7 @@ class AvoidCenter:
         list_length = len(split_points)
 
         if list_length <= 1:
-            self.move(newpos, speed)
+            self._move(newpos, speed)
         else:
             for i in range(1, list_length):
                 self._move(split_points[i], speed)
