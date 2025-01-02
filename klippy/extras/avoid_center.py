@@ -362,7 +362,7 @@ class AvoidCenter:
             self._move(split_points[i], split_points[i+1], speed)
 
     def _move(self, start_pos, end_pos, speed):
-        # start_pos = self.get_position()
+        start_pos = self.get_position()
         min_dist, nearest_point, contact_state = distance_line_to_point(start_pos[0:2], end_pos[0:2], [0, 0])
 
         if min_dist >= self.min_radius:  # Outside radius
