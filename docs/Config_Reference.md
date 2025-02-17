@@ -1790,11 +1790,14 @@ section of the measuring resonances guide for more information on
 #   auto-calibration (with 'SHAPER_CALIBRATE' command). By default no
 #   maximum smoothing is specified. Refer to Measuring_Resonances guide
 #   for more details on using this feature.
+#move_speed: 50
+#   The speed (in mm/s) to move the toolhead to and between test points
+#   during the calibration. The default is 50.
 #min_freq: 5
 #   Minimum frequency to test for resonances. The default is 5 Hz.
 #max_freq: 133.33
 #   Maximum frequency to test for resonances. The default is 133.33 Hz.
-#accel_per_hz: 75
+#accel_per_hz: 60
 #   This parameter is used to determine which acceleration to use to
 #   test a specific frequency: accel = accel_per_hz * freq. Higher the
 #   value, the higher is the energy of the oscillations. Can be set to
@@ -1808,6 +1811,13 @@ section of the measuring resonances guide for more information on
 #   hz_per_sec. Small values make the test slow, and the large values
 #   will decrease the precision of the test. The default value is 1.0
 #   (Hz/sec == sec^-2).
+#sweeping_accel: 400
+#   An acceleration of slow sweeping moves. The default is 400 mm/sec^2.
+#sweeping_period: 1.2
+#   A period of slow sweeping moves. Setting this parameter to 0
+#   disables slow sweeping moves. Avoid setting it to a too small
+#   non-zero value in order to not poison the measurements.
+#   The default is 1.2 sec which is a good all-round choice.
 ```
 
 ## Config file helpers
@@ -3446,8 +3456,9 @@ run_current:
 #stealthchop_threshold: 0
 #   The velocity (in mm/s) to set the "stealthChop" threshold to. When
 #   set, "stealthChop" mode will be enabled if the stepper motor
-#   velocity is below this value. The default is 0, which disables
-#   "stealthChop" mode.
+#   velocity is below this value. Note that the "sensorless homing"
+#   code may temporarily override this setting during homing
+#   operations. The default is 0, which disables "stealthChop" mode.
 #coolstep_threshold:
 #   The velocity (in mm/s) to set the TMC driver internal "CoolStep"
 #   threshold to. If set, the coolstep feature will be enabled when
@@ -3559,8 +3570,9 @@ run_current:
 #stealthchop_threshold: 0
 #   The velocity (in mm/s) to set the "stealthChop" threshold to. When
 #   set, "stealthChop" mode will be enabled if the stepper motor
-#   velocity is below this value. The default is 0, which disables
-#   "stealthChop" mode.
+#   velocity is below this value. Note that the "sensorless homing"
+#   code may temporarily override this setting during homing
+#   operations. The default is 0, which disables "stealthChop" mode.
 #driver_MULTISTEP_FILT: True
 #driver_IHOLDDELAY: 8
 #driver_TPOWERDOWN: 20
@@ -3762,8 +3774,9 @@ run_current:
 #stealthchop_threshold: 0
 #   The velocity (in mm/s) to set the "stealthChop" threshold to. When
 #   set, "stealthChop" mode will be enabled if the stepper motor
-#   velocity is below this value. The default is 0, which disables
-#   "stealthChop" mode.
+#   velocity is below this value. Note that the "sensorless homing"
+#   code may temporarily override this setting during homing
+#   operations. The default is 0, which disables "stealthChop" mode.
 #coolstep_threshold:
 #   The velocity (in mm/s) to set the TMC driver internal "CoolStep"
 #   threshold to. If set, the coolstep feature will be enabled when
@@ -3836,6 +3849,7 @@ run_current:
 #driver_SEIMIN: 0
 #driver_SFILT: 0
 #driver_SG4_ANGLE_OFFSET: 1
+#driver_SLOPE_CONTROL: 0
 #   Set the given register during the configuration of the TMC2240
 #   chip. This may be used to set custom motor parameters. The
 #   defaults for each parameter are next to the parameter name in the
@@ -3895,8 +3909,9 @@ run_current:
 #stealthchop_threshold: 0
 #   The velocity (in mm/s) to set the "stealthChop" threshold to. When
 #   set, "stealthChop" mode will be enabled if the stepper motor
-#   velocity is below this value. The default is 0, which disables
-#   "stealthChop" mode.
+#   velocity is below this value. Note that the "sensorless homing"
+#   code may temporarily override this setting during homing
+#   operations. The default is 0, which disables "stealthChop" mode.
 #coolstep_threshold:
 #   The velocity (in mm/s) to set the TMC driver internal "CoolStep"
 #   threshold to. If set, the coolstep feature will be enabled when
@@ -4925,6 +4940,50 @@ vssa_pin:
 #   noise. The default is 2 seconds.
 ```
 
+### [ads1x1x]
+
+ADS1013, ADS1014, ADS1015, ADS1113, ADS1114 and ADS1115 are I2C based Analog to
+Digital Converters that can be used for temperature sensors. They provide 4
+analog input pins either as single line or as differential input.
+
+Note: Use caution if using this sensor to control heaters. The heater min_temp
+and max_temp are only verified in the host and only if the host is running and
+operating normally. (ADC inputs directly connected to the micro-controller
+verify min_temp and max_temp within the micro-controller and do not require a
+working connection to the host.)
+
+```
+[ads1x1x my_ads1x1x]
+chip: ADS1115
+#pga: 4.096V
+#   Default value is 4.096V. The maximum voltage range used for the input. This
+#   scales all values read from the ADC. Options are: 6.144V, 4.096V, 2.048V,
+#   1.024V, 0.512V, 0.256V
+#adc_voltage: 3.3
+#   The suppy voltage for the device. This allows additional software scaling
+#   for all values read from the ADC.
+i2c_mcu: host
+i2c_bus: i2c.1
+#address_pin: GND
+#   Default value is GND.  There can be up to four addressed devices depending
+#   upon wiring of the device. Check the datasheet for details. The i2c_address
+#   can be specified directly instead of using the address_pin.
+```
+
+The chip provides pins that can be used on other sensors.
+
+```
+sensor_type: ...
+#   Can be any thermistor or adc_temperature.
+sensor_pin: my_ads1x1x:AIN0
+#   A combination of the name of the ads1x1x chip and the pin. Possible
+#   pin values are AIN0, AIN1, AIN2 and AIN3 for single ended lines and
+#   DIFF01, DIFF03, DIFF13 and DIFF23 for differential between their
+#   correspoding lines. For example
+#   DIFF03 measures the differential between line 0 and 3. Only specific
+#   combinations for the differentials are allowed.
+```
+
 ### [replicape]
 
 Replicape support - see the [beaglebone guide](Beaglebone.md) and the
@@ -5006,7 +5065,7 @@ Octoprint as they will conflict, and 1 will fail to initialize
 properly likely aborting your print.
 
 If you use Octoprint and stream gcode over the serial port instead of
-printing from virtual_sd, then remo **M1** and **M0** from *Pausing commands*
+printing from virtual_sd, then remove **M1** and **M0** from *Pausing commands*
 in *Settings > Serial Connection > Firmware & protocol* will prevent
 the need to start print on the Palette 2 and unpausing in Octoprint
 for your print to begin.
@@ -5030,8 +5089,9 @@ serial:
 ### [angle]
 
 Magnetic hall angle sensor support for reading stepper motor angle
-shaft measurements using a1333, as5047d, or tle5012b SPI chips.  The
-measurements are available via the [API Server](API_Server.md) and
+shaft measurements using a1333, as5047d, mt6816, mt6826s,
+or tle5012b SPI chips.
+The measurements are available via the [API Server](API_Server.md) and
 [motion analysis tool](Debugging.md#motion-analysis-and-data-logging).
 See the [G-Code reference](G-Codes.md#angle) for available commands.
 
@@ -5039,7 +5099,7 @@ See the [G-Code reference](G-Codes.md#angle) for available commands.
 [angle my_angle_sensor]
 sensor_type:
 #   The type of the magnetic hall sensor chip. Available choices are
-#   "a1333", "as5047d", and "tle5012b". This parameter must be
+#   "a1333", "as5047d", "mt6816", "mt6826s", and "tle5012b". This parameter must be
 #   specified.
 #sample_period: 0.000400
 #   The query period (in seconds) to use during measurements. The
