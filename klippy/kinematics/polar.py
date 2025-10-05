@@ -7,7 +7,8 @@ import logging, math
 import stepper
 
 
-def distance_line_to_point(p1, p2, p=(0,0), margin=0) -> tuple:
+# def distance_line_to_point(p1, p2, p=(0,0)) -> tuple:
+def distance_line_to_point(p1, p2):
     """
     Calculates the distance between a point and a line segment defined by two points.
 
@@ -19,48 +20,54 @@ def distance_line_to_point(p1, p2, p=(0,0), margin=0) -> tuple:
     Returns:
         float: The distance between the point and the line segment.
     """
-    x, y = p
-    x1, y1 = p1
-    x2, y2 = p2
+    # x, y = p
+    # x1, y1 = p1
+    # x2, y2 = p2
 
     # Calculate the vectors AB and AP
-    ab_x = x2 - x1
-    ab_y = y2 - y1
-    ap_x = x - x1
-    ap_y = y - y1
+    #ab_x = x2 - x1
+    #ab_y = y2 - y1
+    #ap_x = x - x1
+    #ap_y = y - y1
+
+    ab_x = p2[0] - p1[0]
+    ab_y = p2[1] - p1[1]
+    ap_x = 0 - p1[0]
+    ap_y = 0 - p1[1]
 
     # Calculate the dot product of AB and AP
     ab_ap_dot_product = ab_x * ap_x + ab_y * ap_y
 
     # Calculate the length of vector AB
     ab_length = math.sqrt(ab_x ** 2 + ab_y ** 2)
-    point_within_boundry = False
+    # point_within_boundry = False
 
     # Check if the projected point lies on the bounded line segment
     if ab_ap_dot_product <= -0.1:
         # The projected point is outside the segment before the starting point
         dist = math.sqrt(ap_x ** 2 + ap_y ** 2)
-        projected_point = (0, 0)
+        # projected_point = (0, 0)
     elif ab_ap_dot_product >= ab_length ** 2:
         # The projected point is outside the segment after the end point
-        dist = math.sqrt((x - x2) ** 2 + (y - y2) ** 2)
-        projected_point = (0, 0)
+        # dist = math.sqrt((x - x2) ** 2 + (y - y2) ** 2)
+        dist = math.sqrt(p2[0] ** 2 + p2[1] ** 2)
+        # projected_point = (0, 0)
     else:
         # The projected point is inside the bounded line segment
         # Calculate the distance using the cross product
         dist = abs(ab_x * ap_y - ab_y * ap_x) / ab_length
-        point_within_boundry = True
+        # point_within_boundry = True
 
         # Calculate the position along the segment as a percentage
-        position_along_segment = ab_ap_dot_product / (ab_length ** 2)
+        # position_along_segment = ab_ap_dot_product / (ab_length ** 2)
         # Determine the coordinates of the projected point
-        projected_x = x1 + position_along_segment * ab_x
-        projected_y = y1 + position_along_segment * ab_y
-        projected_point = (projected_x, projected_y)
+        # projected_x = x1 + position_along_segment * ab_x
+        # projected_y = y1 + position_along_segment * ab_y
+        # projected_point = (projected_x, projected_y)
 
-    angle = math.degrees(math.atan2(ab_y, ab_x))
+    # angle = math.degrees(math.atan2(ab_y, ab_x))
 
-    return dist, angle, point_within_boundry, projected_point
+    return dist# , angle , point_within_boundry , projected_point
 
 class PolarKinematics:
     def __init__(self, toolhead, config):
@@ -161,7 +168,8 @@ class PolarKinematics:
                              self.max_z_accel * z_ratio)
         if move.axes_d[0] or move.axes_d[1]:
             if self.critical_radius != 0:
-                min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
+                # min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
+                min_dist = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
                 if min_dist <= self.critical_radius:
                     if min_dist != 0:
                         scale_radius = min_dist/self.critical_radius
