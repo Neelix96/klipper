@@ -3,7 +3,7 @@
 # Copyright (C) 2018-2021  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import math
+import logging, math
 import stepper
 
 
@@ -65,23 +65,26 @@ def distance_line_to_point(p1, p2, p=(0,0), margin=0) -> tuple:
 class PolarKinematics:
     def __init__(self, toolhead, config):
         # Setup axis steppers
-        stepper_bed = stepper.PrinterStepper(config.getsection('stepper_bed'), units_in_radians=True)
-        rail_arm = stepper.PrinterRail(config.getsection('stepper_arm'))
+        stepper_bed = stepper.PrinterStepper(config.getsection('stepper_bed'),
+                                             units_in_radians=True)
+        rail_arm = stepper.LookupRail(config.getsection('stepper_arm'))
         rail_z = stepper.LookupMultiRail(config.getsection('stepper_z'))
         stepper_bed.setup_itersolve('polar_stepper_alloc', b'a')
         rail_arm.setup_itersolve('polar_stepper_alloc', b'r')
         rail_z.setup_itersolve('cartesian_stepper_alloc', b'z')
         self.rails = [rail_arm, rail_z]
-        self.steppers = [stepper_bed] + [ s for r in self.rails for s in r.get_steppers() ]
+        self.steppers = [stepper_bed] + [ s for r in self.rails
+                                          for s in r.get_steppers() ]
         for s in self.get_steppers():
             s.set_trapq(toolhead.get_trapq())
-            toolhead.register_step_generator(s.generate_steps)
-        config.get_printer().register_event_handler("stepper_enable:motor_off", self._motor_off)
         # Setup boundary checks
         self.max_velocity, self.max_accel = toolhead.get_max_velocity()
-        self.max_z_velocity = config.getfloat('max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
-        self.max_z_accel = config.getfloat('max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
-        self.critical_radius = config.getfloat('critical_radius', above=0., default=0)
+        self.max_z_velocity = config.getfloat(
+            'max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
+        self.max_z_accel = config.getfloat(
+            'max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
+        self.critical_radius = config.getfloat(
+            'critical_radius', above=0., default=0)
         self.limit_z = (1.0, -1.0)
         self.limit_xy2 = -1.
         max_xy = self.rails[0].get_range()[1]
@@ -99,13 +102,16 @@ class PolarKinematics:
     def set_position(self, newpos, homing_axes):
         for s in self.steppers:
             s.set_position(newpos)
-        if 2 in homing_axes:
+        if "z" in homing_axes:
             self.limit_z = self.rails[1].get_range()
-        if 0 in homing_axes and 1 in homing_axes:
+        if "x" in homing_axes and "y" in homing_axes:
             self.limit_xy2 = self.rails[0].get_range()[1]**2
-    def note_z_not_homed(self):
-        # Helper for Safe Z Home
-        self.limit_z = (1.0, -1.0)
+    def clear_homing_state(self, clear_axes):
+        if "x" in clear_axes or "y" in clear_axes:
+            # X and Y cannot be cleared separately
+            self.limit_xy2 = -1.
+        if "z" in clear_axes:
+            self.limit_z = (1.0, -1.0)
     def _home_axis(self, homing_state, axis, rail):
         # Determine movement
         position_min, position_max = rail.get_range()
@@ -137,9 +143,6 @@ class PolarKinematics:
             self._home_axis(homing_state, 0, self.rails[0])
         if home_z:
             self._home_axis(homing_state, 2, self.rails[1])
-    def _motor_off(self, print_time):
-        self.limit_z = (1.0, -1.0)
-        self.limit_xy2 = -1.
     def check_move(self, move):
         end_pos = move.end_pos
         xy2 = end_pos[0]**2 + end_pos[1]**2
@@ -157,15 +160,16 @@ class PolarKinematics:
             move.limit_speed(self.max_z_velocity * z_ratio,
                              self.max_z_accel * z_ratio)
         if move.axes_d[0] or move.axes_d[1]:
-            min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
-            if min_dist <= self.critical_radius:
-                if min_dist != 0:
-                    scale_radius = min_dist/self.critical_radius
-                    # scale_angle = abs(1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0))  # From Marlin
-                    _speed = self.max_velocity * (scale_radius)
-                    _accel = self.max_accel * (scale_radius)
-                    move.limit_speed(_speed,_accel)
-                    # logging.info("Vel: %s, Acc: %s", _speed, _accel)
+            if self.critical_radius != 0:
+                min_dist, angle, point_within_boundary, v_max_point = distance_line_to_point(move.start_pos[0:2], move.end_pos[0:2])
+                if min_dist <= self.critical_radius:
+                    if min_dist != 0:
+                        scale_radius = min_dist/self.critical_radius
+                        # scale_angle = abs(1.0 - (abs(180.0 - angle if angle > 90.0 else angle) / 90.0))  # From Marlin
+                        _speed = self.max_velocity * (scale_radius)
+                        _accel = self.max_accel * (scale_radius)
+                        move.limit_speed(_speed,_accel)
+                        # logging.info("Vel: %s, Acc: %s", _speed, _accel)
 
     def get_status(self, eventtime):
         xy_home = "xy" if self.limit_xy2 >= 0. else ""
