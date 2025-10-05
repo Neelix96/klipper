@@ -3,7 +3,7 @@
 # Copyright (C) 2018-2021  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import logging, math
+import math
 import stepper
 
 
@@ -65,29 +65,23 @@ def distance_line_to_point(p1, p2, p=(0,0), margin=0) -> tuple:
 class PolarKinematics:
     def __init__(self, toolhead, config):
         # Setup axis steppers
-        stepper_bed = stepper.PrinterStepper(config.getsection('stepper_bed'),
-                                             units_in_radians=True)
+        stepper_bed = stepper.PrinterStepper(config.getsection('stepper_bed'), units_in_radians=True)
         rail_arm = stepper.PrinterRail(config.getsection('stepper_arm'))
         rail_z = stepper.LookupMultiRail(config.getsection('stepper_z'))
         stepper_bed.setup_itersolve('polar_stepper_alloc', b'a')
         rail_arm.setup_itersolve('polar_stepper_alloc', b'r')
         rail_z.setup_itersolve('cartesian_stepper_alloc', b'z')
         self.rails = [rail_arm, rail_z]
-        self.steppers = [stepper_bed] + [ s for r in self.rails
-                                          for s in r.get_steppers() ]
+        self.steppers = [stepper_bed] + [ s for r in self.rails for s in r.get_steppers() ]
         for s in self.get_steppers():
             s.set_trapq(toolhead.get_trapq())
             toolhead.register_step_generator(s.generate_steps)
-        config.get_printer().register_event_handler("stepper_enable:motor_off",
-                                                    self._motor_off)
+        config.get_printer().register_event_handler("stepper_enable:motor_off", self._motor_off)
         # Setup boundary checks
         self.max_velocity, self.max_accel = toolhead.get_max_velocity()
-        self.max_z_velocity = config.getfloat(
-            'max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
-        self.max_z_accel = config.getfloat(
-            'max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
-        self.critical_radius = config.getfloat(
-            'critical_radius', above=0.)
+        self.max_z_velocity = config.getfloat('max_z_velocity', self.max_velocity, above=0., maxval=self.max_velocity)
+        self.max_z_accel = config.getfloat('max_z_accel', self.max_accel, above=0., maxval=self.max_accel)
+        self.critical_radius = config.getfloat('critical_radius', above=0., default=0)
         self.limit_z = (1.0, -1.0)
         self.limit_xy2 = -1.
         max_xy = self.rails[0].get_range()[1]
