@@ -113,7 +113,7 @@ class Move:
         self.cruise_t = cruise_d / cruise_v
         self.decel_t = decel_d / ((end_v + cruise_v) * 0.5)
 
-LOOKAHEAD_FLUSH_TIME = 0.250
+LOOKAHEAD_FLUSH_TIME = 0.150
 
 # Class to track a list of pending move requests and to facilitate
 # "look-ahead" across moves to reduce acceleration between moves.
@@ -126,6 +126,8 @@ class LookAheadQueue:
         self.junction_flush = LOOKAHEAD_FLUSH_TIME
     def set_flush_time(self, flush_time):
         self.junction_flush = flush_time
+    def is_empty(self):
+        return not self.queue
     def get_last(self):
         if self.queue:
             return self.queue[-1]
@@ -190,8 +192,9 @@ class LookAheadQueue:
         # Check if enough moves have been queued to reach the target flush time.
         return self.junction_flush <= 0.
 
-BUFFER_TIME_HIGH = 2.0
+BUFFER_TIME_HIGH = 1.0
 BUFFER_TIME_START = 0.250
+PRIMING_CMD_TIME = 0.100
 
 # Main code to track events (and their timing) on the printer toolhead
 class ToolHead:
@@ -234,6 +237,8 @@ class ToolHead:
         self.Coord = gcode.Coord
         extruder = kinematics.extruder.DummyExtruder(self.printer)
         self.extra_axes = [extruder]
+        self.extra_axes_status = {}
+        self._build_extra_axes_status()
         kin_name = config.get('kinematics')
         try:
             mod = importlib.import_module('kinematics.' + kin_name)
@@ -273,21 +278,22 @@ class ToolHead:
             self._calc_print_time()
         # Queue moves into trapezoid motion queue (trapq)
         next_move_time = self.print_time
-        for move in moves:
-            if move.is_kinematic_move:
-                self.trapq_append(
-                    self.trapq, next_move_time,
-                    move.accel_t, move.cruise_t, move.decel_t,
-                    move.start_pos[0], move.start_pos[1], move.start_pos[2],
-                    move.axes_r[0], move.axes_r[1], move.axes_r[2],
-                    move.start_v, move.cruise_v, move.accel)
-            for e_index, ea in enumerate(self.extra_axes):
-                if move.axes_d[e_index + 3]:
-                    ea.process_move(next_move_time, move, e_index + 3)
-            next_move_time = (next_move_time + move.accel_t
-                              + move.cruise_t + move.decel_t)
-            for cb in move.timing_callbacks:
-                cb(next_move_time)
+        with self.reactor.assert_no_pause():
+            for move in moves:
+                if move.is_kinematic_move:
+                    self.trapq_append(
+                        self.trapq, next_move_time,
+                        move.accel_t, move.cruise_t, move.decel_t,
+                        move.start_pos[0], move.start_pos[1], move.start_pos[2],
+                        move.axes_r[0], move.axes_r[1], move.axes_r[2],
+                        move.start_v, move.cruise_v, move.accel)
+                for e_index, ea in enumerate(self.extra_axes):
+                    if move.axes_d[e_index + 3]:
+                        ea.process_move(next_move_time, move, e_index + 3)
+                next_move_time = (next_move_time + move.accel_t
+                                  + move.cruise_t + move.decel_t)
+                for cb in move.timing_callbacks:
+                    cb(next_move_time)
         # Generate steps for moves
         self._advance_move_time(next_move_time)
         self.motion_queuing.note_mcu_movequeue_activity(next_move_time)
@@ -301,6 +307,13 @@ class ToolHead:
         self.check_stall_time = 0.
         if is_runout and prev_print_time != self.print_time:
             self.check_stall_time = self.print_time
+    def _handle_step_flush(self, flush_time, step_gen_time):
+        if self.special_queuing_state:
+            return
+        # In "main" state - flush lookahead if buffer runs low
+        kin_flush_delay = self.motion_queuing.get_kin_flush_delay()
+        if step_gen_time >= self.print_time - kin_flush_delay - 0.001:
+            self._flush_lookahead(is_runout=True)
     def flush_step_generation(self):
         self._flush_lookahead()
         self.motion_queuing.flush_all_steps()
@@ -311,39 +324,6 @@ class ToolHead:
         else:
             self._process_lookahead()
         return self.print_time
-    def _check_pause(self):
-        eventtime = self.reactor.monotonic()
-        est_print_time = self.mcu.estimated_print_time(eventtime)
-        buffer_time = self.print_time - est_print_time
-        if self.special_queuing_state:
-            if self.check_stall_time:
-                # Was in "NeedPrime" state and got there from idle input
-                if est_print_time < self.check_stall_time:
-                    self.print_stall += 1
-                self.check_stall_time = 0.
-            # Transition from "NeedPrime"/"Priming" state to "Priming" state
-            self.special_queuing_state = "Priming"
-            self.need_check_pause = -1.
-            if self.priming_timer is None:
-                self.priming_timer = self.reactor.register_timer(
-                    self._priming_handler)
-            wtime = eventtime + max(0.100, buffer_time - BUFFER_TIME_HIGH)
-            self.reactor.update_timer(self.priming_timer, wtime)
-        # Check if there are lots of queued moves and pause if so
-        while 1:
-            pause_time = buffer_time - BUFFER_TIME_HIGH
-            if pause_time <= 0.:
-                break
-            if not self.can_pause:
-                self.need_check_pause = self.reactor.NEVER
-                return
-            eventtime = self.reactor.pause(
-                eventtime + max(.005, min(1., pause_time)))
-            est_print_time = self.mcu.estimated_print_time(eventtime)
-            buffer_time = self.print_time - est_print_time
-        if not self.special_queuing_state:
-            # In main state - defer pause checking until needed
-            self.need_check_pause = est_print_time + BUFFER_TIME_HIGH
     def _priming_handler(self, eventtime):
         self.reactor.unregister_timer(self.priming_timer)
         self.priming_timer = None
@@ -354,13 +334,49 @@ class ToolHead:
             logging.exception("Exception in priming_handler")
             self.printer.invoke_shutdown("Exception in priming_handler")
         return self.reactor.NEVER
-    def _handle_step_flush(self, flush_time, step_gen_time):
-        if self.special_queuing_state:
+    def _check_priming_state(self, eventtime):
+        if self.lookahead.is_empty():
+            # In "NeedPrime" state and can remain there
             return
-        # In "main" state - flush lookahead if buffer runs low
-        kin_flush_delay = self.motion_queuing.get_kin_flush_delay()
-        if step_gen_time >= self.print_time - kin_flush_delay - 0.001:
-            self._flush_lookahead(is_runout=True)
+        est_print_time = self.mcu.estimated_print_time(eventtime)
+        if self.check_stall_time:
+            # Was in "NeedPrime" state and got there from idle input
+            if est_print_time < self.check_stall_time:
+                self.print_stall += 1
+            self.check_stall_time = 0.
+        # Transition from "NeedPrime"/"Priming" state to "Priming" state
+        self.special_queuing_state = "Priming"
+        self.need_check_pause = -1.
+        if self.priming_timer is None:
+            self.priming_timer = self.reactor.register_timer(
+                self._priming_handler)
+        will_pause_time = self.print_time - est_print_time - BUFFER_TIME_HIGH
+        wtime = eventtime + max(0., will_pause_time) + PRIMING_CMD_TIME
+        self.reactor.update_timer(self.priming_timer, wtime)
+    def _check_pause(self):
+        eventtime = self.reactor.monotonic()
+        if self.special_queuing_state:
+            # In "NeedPrime"/"Priming" state - update priming expiration timer
+            self._check_priming_state(eventtime)
+        # Check if there are lots of queued moves and pause if so
+        did_pause = False
+        while 1:
+            est_print_time = self.mcu.estimated_print_time(eventtime)
+            pause_time = self.print_time - est_print_time - BUFFER_TIME_HIGH
+            if pause_time <= 0.:
+                break
+            if not self.can_pause:
+                self.need_check_pause = self.reactor.NEVER
+                return
+            pause_time = max(.005, min(1., pause_time))
+            eventtime = self.reactor.pause(eventtime + pause_time)
+            did_pause = True
+        if not self.special_queuing_state:
+            # In main state - defer pause checking
+            self.need_check_pause = self.print_time
+            if not did_pause:
+                # May be falling behind - yield to avoid starving other tasks
+                self.reactor.pause(self.reactor.NOW)
     # Movement commands
     def get_position(self):
         return list(self.commanded_pos)
@@ -411,16 +427,22 @@ class ToolHead:
             if not self.can_pause:
                 break
             eventtime = self.reactor.pause(eventtime + 0.100)
+    def _build_extra_axes_status(self):
+        enames = [ea.get_name() for ea in self.extra_axes]
+        self.extra_axes_status = {n: e_index + 3
+                                  for e_index, n in enumerate(enames) if n}
     def set_extruder(self, extruder, extrude_pos):
         # XXX - should use add_extra_axis
         self.extra_axes[0] = extruder
         self.commanded_pos[3] = extrude_pos
+        self._build_extra_axes_status()
     def get_extruder(self):
         return self.extra_axes[0]
     def add_extra_axis(self, ea, axis_pos):
         self._flush_lookahead()
         self.extra_axes.append(ea)
         self.commanded_pos.append(axis_pos)
+        self._build_extra_axes_status()
         self.printer.send_event("toolhead:update_extra_axes")
     def remove_extra_axis(self, ea):
         self._flush_lookahead()
@@ -429,6 +451,7 @@ class ToolHead:
         ea_index = self.extra_axes.index(ea) + 3
         self.commanded_pos.pop(ea_index)
         self.extra_axes.pop(ea_index - 3)
+        self._build_extra_axes_status()
         self.printer.send_event("toolhead:update_extra_axes")
     def get_extra_axes(self):
         return [None, None, None] + self.extra_axes
@@ -476,8 +499,7 @@ class ToolHead:
             self.print_time, max(buffer_time, 0.), self.print_stall)
     def check_busy(self, eventtime):
         est_print_time = self.mcu.estimated_print_time(eventtime)
-        lookahead_empty = not self.lookahead.queue
-        return self.print_time, est_print_time, lookahead_empty
+        return self.print_time, est_print_time, self.lookahead.is_empty()
     def get_status(self, eventtime):
         print_time = self.print_time
         estimated_print_time = self.mcu.estimated_print_time(eventtime)
@@ -487,11 +509,12 @@ class ToolHead:
                      'stalls': self.print_stall,
                      'estimated_print_time': estimated_print_time,
                      'extruder': extruder.get_name(),
-                     'position': self.Coord(*self.commanded_pos[:4]),
+                     'position': self.Coord(self.commanded_pos),
                      'max_velocity': self.max_velocity,
                      'max_accel': self.max_accel,
                      'minimum_cruise_ratio': self.min_cruise_ratio,
-                     'square_corner_velocity': self.square_corner_velocity})
+                     'square_corner_velocity': self.square_corner_velocity,
+                     'extra_axes': self.extra_axes_status})
         return res
     def _handle_shutdown(self):
         self.can_pause = False
