@@ -4,12 +4,13 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-import stepper, chelper
+import stepper
 from . import force_move
 
 class ManualStepper:
     def __init__(self, config):
         self.printer = config.get_printer()
+        self.name = config.get_name()
         if config.get('endstop_pin', None) is not None:
             self.can_home = True
             self.rail = stepper.LookupRail(
@@ -36,11 +37,13 @@ class ManualStepper:
         self.instant_corner_v = 0.
         self.gaxis_limit_velocity = self.gaxis_limit_accel = 0.
         # Register commands
-        stepper_name = config.get_name().split()[1]
+        stepper_name = self.name.split()[1]
         gcode = self.printer.lookup_object('gcode')
         gcode.register_mux_command('MANUAL_STEPPER', "STEPPER",
                                    stepper_name, self.cmd_MANUAL_STEPPER,
                                    desc=self.cmd_MANUAL_STEPPER_help)
+    def get_name(self):
+        return self.name
     def sync_print_time(self):
         toolhead = self.printer.lookup_object('toolhead')
         print_time = toolhead.get_last_move_time()
@@ -203,7 +206,6 @@ class ManualStepper:
         self.motion_queuing.drip_update_time(start_time, end_time,
                                              drip_completion)
         # Clear trapq of any remaining parts of movement
-        reactor = self.printer.get_reactor()
         self.motion_queuing.wipe_trapq(self.trapq)
         self.rail.set_position([self.commanded_pos, 0., 0.])
         self.sync_print_time()
