@@ -130,7 +130,7 @@ class PolarKinematics:
                 min_dist = distance_line_to_point(move.start_pos[0:2],
                                                   move.end_pos[0:2])
                 if min_dist != 0:
-                    v_rot = math.asin(math.sqrt(move.max_cruise_v2) / min_dist)
+                    v_rot = math.sqrt(move.max_cruise_v2) / min_dist
                     if self.v_rad_max < v_rot:
                         scale_radius = v_rot/self.v_rad_max
                         move.limit_speed(self.max_velocity * scale_radius,
