@@ -133,7 +133,7 @@ class PolarKinematics:
                     v_rot = math.sqrt(move.max_cruise_v2) / min_dist
                     logging.info("Velocity Rot: %s, Vel: %s, Dist: %s", v_rot, move.max_cruise_v2, min_dist)
                     if self.v_rad_max < v_rot:
-                        scale_radius = v_rot/self.v_rad_max
+                        scale_radius = self.v_rad_max/v_rot
                         move.limit_speed(self.max_velocity * scale_radius,
                                          self.max_accel * scale_radius)
 
