@@ -145,7 +145,7 @@ def interpolate_points(start, end, step=10):
             # Interpolate z, w
             z = z1 + t * (z2 - z1)
             w = w1 + t * (w2 - w1)
-            points.append((x, y, z, w))
+            points.append([x, y, z, w])
     else:  # Z Move
         points = [(x1, x2, z2-z1, w2-w1)]
 
